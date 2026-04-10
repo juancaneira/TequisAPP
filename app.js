@@ -1,7 +1,8 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
-const sql = require('mssql');
+const cors    = require('cors');
+const sql     = require('mssql');
+const bcrypt  = require('bcryptjs');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -77,63 +78,74 @@ app.post('/login', async (req, res) => {
 
     // 1) Buscar en UtentiMedici
     const resMedico = await db.request()
-      .input('usuario', sql.NVarChar, usuario)
+      .input('usuario', sql.VarChar, usuario)
       .query(`
-        SELECT IdUtente, NomeUtente, Password, Nome, Cognome, Email, FlgDisabilitato, CPA_Medico
+        SELECT CPA, PasswordApp, Nome, Cognome, Titolo, Email, FlgDisabilitato
         FROM UtentiMedici
-        WHERE NomeUtente = @usuario
+        WHERE CPA = @usuario
       `);
 
     if (resMedico.recordset.length > 0) {
       const medico = resMedico.recordset[0];
 
-      // FlgDisabilitato: 0 = activo, -1 = deshabilitado
       if (medico.FlgDisabilitato === -1) {
         return res.status(403).json({ error: 'Cuenta desactivada. Contacte al administrador' });
       }
 
-      // Comparación de contraseña en texto plano
-      // Para bcrypt: const ok = await require('bcryptjs').compare(contrasena, medico.Password);
-      if (contrasena !== medico.Password) {
+      if (!medico.PasswordApp) {
+        return res.status(401).json({
+          error: 'Contraseña de app no configurada',
+          accion: 'Usa el endpoint POST /setup-password para crear tu contraseña de acceso'
+        });
+      }
+
+      const passwordValida = await bcrypt.compare(contrasena, medico.PasswordApp);
+      if (!passwordValida) {
         return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
       }
 
       return res.status(200).json({
         rol: 'medico',
         usuario: {
-          id: medico.IdUtente,
-          nombre: `${medico.Nome || ''} ${medico.Cognome || ''}`.trim(),
+          CPA_Medico: medico.CPA,
+          nombre: `${medico.Titolo || ''} ${medico.Nome || ''} ${medico.Cognome || ''}`.trim(),
           email: medico.Email,
-          CPA_Medico: medico.CPA_Medico,
         },
       });
     }
 
-    // 2) Si no es médico, buscar en UtentiPazienti
+    // 2) Buscar en UtentiPazienti
     const resPaciente = await db.request()
-      .input('usuario', sql.NVarChar, usuario)
+      .input('usuario', sql.VarChar, usuario)
       .query(`
-        SELECT IdUtente, NomeUtente, Password, Nome, Cognome, Email, FlgDisabilitato
+        SELECT CPA, PasswordApp, Nome, Cognome, Email, FlgDisabilitato
         FROM UtentiPazienti
-        WHERE NomeUtente = @usuario
+        WHERE CPA = @usuario
       `);
 
     if (resPaciente.recordset.length > 0) {
       const paciente = resPaciente.recordset[0];
 
-      // FlgDisabilitato: 0 = activo, -1 = deshabilitado
       if (paciente.FlgDisabilitato === -1) {
         return res.status(403).json({ error: 'Cuenta desactivada. Contacte al administrador' });
       }
 
-      if (contrasena !== paciente.Password) {
+      if (!paciente.PasswordApp) {
+        return res.status(401).json({
+          error: 'Contraseña de app no configurada',
+          accion: 'Usa el endpoint POST /setup-password para crear tu contraseña de acceso'
+        });
+      }
+
+      const passwordValida = await bcrypt.compare(contrasena, paciente.PasswordApp);
+      if (!passwordValida) {
         return res.status(401).json({ error: 'Usuario o contraseña incorrectos' });
       }
 
       return res.status(200).json({
         rol: 'paciente',
         usuario: {
-          id: paciente.IdUtente,
+          CPA_Paciente: paciente.CPA,
           nombre: `${paciente.Nome || ''} ${paciente.Cognome || ''}`.trim(),
           email: paciente.Email,
         },
@@ -237,6 +249,96 @@ app.get('/medico/descargar/:id', async (req, res) => {
   }
 });
 
+/**
+ * POST /setup-password
+ *
+ * Permite a un médico o paciente crear su contraseña de acceso a la app
+ * por primera vez, o cambiarla si ya la tiene.
+ *
+ * Body: { "usuario": "CPA", "passwordApp": "nueva_clave" }
+ *
+ * Si el usuario ya tiene PasswordApp configurada, debe enviar también
+ * la contraseña actual para poder cambiarla:
+ * Body: { "usuario": "CPA", "passwordApp": "nueva_clave", "passwordActual": "clave_vieja" }
+ */
+app.post('/setup-password', async (req, res) => {
+  const { usuario, passwordApp, passwordActual } = req.body;
+
+  if (!usuario || !passwordApp) {
+    return res.status(400).json({ error: 'Los campos usuario y passwordApp son requeridos' });
+  }
+
+  if (passwordApp.length < 6) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  }
+
+  try {
+    const db = await getPool();
+
+    // Buscar en médicos primero, luego pacientes
+    let tabla = null;
+    let registro = null;
+
+    const resMedico = await db.request()
+      .input('usuario', sql.VarChar, usuario)
+      .query(`SELECT CPA, PasswordApp, FlgDisabilitato FROM UtentiMedici WHERE CPA = @usuario`);
+
+    if (resMedico.recordset.length > 0) {
+      tabla = 'UtentiMedici';
+      registro = resMedico.recordset[0];
+    } else {
+      const resPaciente = await db.request()
+        .input('usuario', sql.VarChar, usuario)
+        .query(`SELECT CPA, PasswordApp, FlgDisabilitato FROM UtentiPazienti WHERE CPA = @usuario`);
+
+      if (resPaciente.recordset.length > 0) {
+        tabla = 'UtentiPazienti';
+        registro = resPaciente.recordset[0];
+      }
+    }
+
+    if (!registro) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    if (registro.FlgDisabilitato === -1) {
+      return res.status(403).json({ error: 'Cuenta desactivada. Contacte al administrador' });
+    }
+
+    // Si ya tiene contraseña, verificar la actual antes de cambiar
+    if (registro.PasswordApp) {
+      if (!passwordActual) {
+        return res.status(400).json({
+          error: 'Este usuario ya tiene contraseña configurada',
+          accion: 'Envía también el campo passwordActual para cambiarla'
+        });
+      }
+      const actualValida = await bcrypt.compare(passwordActual, registro.PasswordApp);
+      if (!actualValida) {
+        return res.status(401).json({ error: 'La contraseña actual es incorrecta' });
+      }
+    }
+
+    // Cifrar la nueva contraseña con bcrypt (10 rondas)
+    const hash = await bcrypt.hash(passwordApp, 10);
+
+    await db.request()
+      .input('hash', sql.VarChar(60), hash)
+      .input('usuario', sql.VarChar, usuario)
+      .query(`UPDATE ${tabla} SET PasswordApp = @hash WHERE CPA = @usuario`);
+
+    return res.status(200).json({
+      mensaje: registro.PasswordApp
+        ? 'Contraseña actualizada correctamente'
+        : 'Contraseña de app configurada correctamente'
+    });
+
+  } catch (err) {
+    console.error('Error en /setup-password:', err.message);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
 // ─── INICIO DEL SERVIDOR ─────────────────────────────────────────────────────
 async function iniciar() {
   try {
@@ -245,6 +347,7 @@ async function iniciar() {
       console.log(`\nAPI WinlabWeb escuchando en http://localhost:${PORT}`);
       console.log('Endpoints disponibles:');
       console.log(`  POST http://localhost:${PORT}/login`);
+      console.log(`  POST http://localhost:${PORT}/setup-password`);
       console.log(`  GET  http://localhost:${PORT}/medico/informes?CPA_Medico=XXXX`);
       console.log(`  GET  http://localhost:${PORT}/medico/descargar/:id\n`);
     });

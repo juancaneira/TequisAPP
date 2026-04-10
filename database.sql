@@ -3,6 +3,31 @@
 -- Incluye: médico y paciente
 -- Ejecutar en orden: primero los SP, luego los ejemplos de uso
 -- ============================================================
+
+-- ============================================================
+-- PASO 0: Agregar columna PasswordApp para la app móvil
+-- Ejecutar UNA SOLA VEZ en producción
+-- ============================================================
+
+-- Médicos
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.UtentiMedici') AND name = 'PasswordApp'
+)
+    ALTER TABLE dbo.UtentiMedici
+        ADD PasswordApp VARCHAR(60) NULL;
+GO
+
+-- Pacientes
+IF NOT EXISTS (
+    SELECT 1 FROM sys.columns
+    WHERE object_id = OBJECT_ID('dbo.UtentiPazienti') AND name = 'PasswordApp'
+)
+    ALTER TABLE dbo.UtentiPazienti
+        ADD PasswordApp VARCHAR(60) NULL;
+GO
+
+-- ============================================================
 --
 -- Convención de flags (validada con DISTINCT en producción):
 --   UtentiMedici / UtentiPazienti.FlgDisabilitato : 0 = activo | -1 = deshabilitado
