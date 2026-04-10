@@ -43,6 +43,16 @@ async function getPool() {
 
 // ─── ENDPOINTS ───────────────────────────────────────────────────────────────
 
+// Ruta de salud: confirma que la API está en línea
+app.get('/', function(req, res) {
+  res.json({
+    servicio: 'WinlabwebAPI',
+    version: '1.0.0',
+    estado: 'en linea',
+    timestamp: new Date().toISOString()
+  });
+});
+
 /**
  * POST /login
  *
