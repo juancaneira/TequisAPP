@@ -6,7 +6,7 @@
 # Dependencias de Node.js
 node_modules/
 
-# Logs
+# Logs del servicio (generados por NSSM en produccion)
 logs/
 *.log
 npm-debug.log*
