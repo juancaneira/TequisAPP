@@ -3,6 +3,42 @@ const express = require('express');
 const cors    = require('cors');
 const sql     = require('mssql');
 const bcrypt  = require('bcryptjs');
+const crypto  = require('crypto');
+
+// ─── DESCIFRADO DE BLOBS TESI (GenKeyNet.dll - clsCryptoTesi) ────────────────
+// Clave maestra extraída del constructor de clsCryptoTesi en GenKeyNet.dll.
+// Algoritmo: DES-CBC, IV = 8 bytes en cero.
+// Formato del plaintext: bytes 4-7 = longitud real (UInt32LE), datos desde byte 12.
+const TESI_KEY_NET = '9DDD6FF6F2534F29831255CDF0E0C673D6DDDF17A113626387218632BAA2EE86EA6FEC9F4F5B846D14DB9CD040170E60D1B2331298954F531E79E9B43F77915B';
+
+function descifrarBlobTesi(bufferCifrado) {
+  const claveDES = Buffer.from(TESI_KEY_NET.substring(0, 8), 'ascii');
+  const iv       = Buffer.alloc(8, 0);
+
+  const decipher = crypto.createDecipheriv('des-cbc', claveDES, iv);
+  decipher.setAutoPadding(false);
+
+  const descifrado = Buffer.concat([
+    decipher.update(bufferCifrado),
+    decipher.final()
+  ]);
+
+  if (descifrado.length <= 12) {
+    throw new Error('Blob descifrado demasiado corto: ' + descifrado.length + ' bytes');
+  }
+
+  // Longitud real de los datos (UInt32 little-endian en bytes 4-7)
+  const longitudDatos = descifrado.readUInt32LE(4);
+  const padding = descifrado.length - longitudDatos;
+
+  // Validar que el padding esté entre 12 y 19 (formato TesiWeb)
+  if (padding < 12 || padding > 19) {
+    throw new Error(`Formato de blob inválido: padding=${padding}, longitud=${longitudDatos}, total=${descifrado.length}`);
+  }
+
+  // Los datos reales (PDF) comienzan en byte 12
+  return descifrado.slice(12, 12 + longitudDatos);
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -196,27 +232,35 @@ app.get('/medico/informes', async (req, res) => {
 });
 
 /**
- * GET /medico/descargar/:id
+ * GET /medico/descargar/:id?CPA_Medico=XXXX
  *
- * Parámetro de ruta: id (IdReferto numérico)
- * Ejemplo: GET /medico/descargar/42
+ * Parámetros:
+ *   - id          : IdReferto numérico en la ruta
+ *   - CPA_Medico  : CPA del médico como query param
  *
- * Ejecuta el SP: sp_Medico_ObtenerPDF @IdReferto
- * Lee el campo BlobReferto (varbinary → Buffer en Node.js).
- * Responde con el binario del PDF como stream para que la app móvil pueda abrirlo.
+ * Ejemplo: GET /medico/descargar/1346552?CPA_Medico=JCNP
+ *
+ * Ejecuta: sp_Medico_ObtenerPDF @CPA_Medico, @IdReferto
+ * Devuelve el campo BlobReferto (varbinary) como stream PDF.
  */
 app.get('/medico/descargar/:id', async (req, res) => {
-  const idReferto = parseInt(req.params.id, 10);
+  const idReferto  = parseInt(req.params.id, 10);
+  const cpaMedico  = req.query.CPA_Medico;
 
   if (isNaN(idReferto)) {
     return res.status(400).json({ error: 'El id debe ser un número entero' });
+  }
+
+  if (!cpaMedico) {
+    return res.status(400).json({ error: 'El parámetro CPA_Medico es requerido' });
   }
 
   try {
     const db = await getPool();
 
     const result = await db.request()
-      .input('IdReferto', sql.Int, idReferto)
+      .input('CPA_Medico', sql.VarChar, cpaMedico)
+      .input('IdReferto',  sql.BigInt,  idReferto)
       .execute('sp_Medico_ObtenerPDF');
 
     if (!result.recordset || result.recordset.length === 0) {
@@ -224,24 +268,32 @@ app.get('/medico/descargar/:id', async (req, res) => {
     }
 
     const registro = result.recordset[0];
-    const blobPDF = registro.BlobReferto; // Buffer (varbinary MAX → Buffer de Node.js)
+    const blobCifrado = registro.BlobReferto;
 
-    if (!blobPDF || blobPDF.length === 0) {
-      return res.status(404).json({ error: 'El informe no tiene contenido PDF (BlobReferto vacío)' });
+    if (!blobCifrado || blobCifrado.length === 0) {
+      return res.status(404).json({ error: 'El informe no tiene contenido (BlobReferto vacío)' });
+    }
+
+    // Descifrar el blob con el algoritmo DES-CBC de TesiWeb
+    let pdfBuffer;
+    try {
+      pdfBuffer = descifrarBlobTesi(blobCifrado);
+    } catch (errDescifrado) {
+      console.error('Error al descifrar BlobReferto:', errDescifrado.message);
+      return res.status(500).json({ error: 'No se pudo descifrar el informe: ' + errDescifrado.message });
     }
 
     const nombreArchivo = registro.NomeFile
-      ? registro.NomeFile.replace(/[^a-zA-Z0-9._-]/g, '_') // sanitiza el nombre
+      ? registro.NomeFile.replace(/[^a-zA-Z0-9._-]/g, '_')
       : `informe_${idReferto}.pdf`;
 
-    // Headers que permiten al móvil (Flutter/iOS/Android) abrir el PDF inline
+    // Headers para que el móvil abra el PDF inline
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `inline; filename="${nombreArchivo}"`);
-    res.setHeader('Content-Length', blobPDF.length);
+    res.setHeader('Content-Length', pdfBuffer.length);
     res.setHeader('Cache-Control', 'no-cache');
 
-    // Envía el buffer como stream de respuesta
-    return res.end(blobPDF);
+    return res.end(pdfBuffer);
 
   } catch (err) {
     console.error('Error en /medico/descargar/:id:', err.message);
