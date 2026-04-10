@@ -3,6 +3,16 @@
 -- Incluye: médico y paciente
 -- Ejecutar en orden: primero los SP, luego los ejemplos de uso
 -- ============================================================
+--
+-- Convención de flags (validada con DISTINCT en producción):
+--   UtentiMedici / UtentiPazienti.FlgDisabilitato : 0 = activo | -1 = deshabilitado
+--   Referti.FlgCanc                               : 0 = vigente | -1 = cancelado
+--   Referti.FlgPubblicato                         : -1 = publicado (boolean estilo VB) | 0 = no publicado
+--        (no usar = 1: en esta BD el valor 1 no aparece en FlgPubblicato)
+--   Referti.FlgFirmato                            : en esta BD solo existe 0; no filtrar con = 1
+--   Referti.FlgRiservato / FlgPreliminare         : 0 en el universo analizado; mantener = 0 si aplica
+--
+-- ============================================================
 
 USE winlabweb;
 GO
@@ -15,7 +25,7 @@ CREATE OR ALTER PROCEDURE sp_Medico_ListarPDFs
     @SoloNoLeidos   BIT         = 0,    -- 1 = solo pendientes de consultar
     @FechaDesde     VARCHAR(10) = NULL, -- formato: 'YYYY-MM-DD'
     @FechaHasta     VARCHAR(10) = NULL,
-    @SoloFirmados   BIT         = 1     -- 1 = solo firmados (recomendado)
+    @SoloFirmados   BIT         = 1     -- 1 = excluir FlgFirmato = -1 si existiera; en BD actual casi todo es 0
 AS
 BEGIN
     SET NOCOUNT ON;
@@ -65,7 +75,7 @@ BEGIN
     WHERE
         um.CPA      = @CPA_Medico
         AND r.FlgCanc   = 0
-        AND (@SoloFirmados  = 0 OR r.FlgFirmato    = 1)
+        AND (@SoloFirmados = 0 OR r.FlgFirmato <> -1)
         AND (@SoloNoLeidos  = 0 OR rpm.FlgConsultato = 0)
         AND (@FechaDesde IS NULL OR r.Data >= @FechaDesde)
         AND (@FechaHasta IS NULL OR r.Data <= @FechaHasta)
@@ -212,8 +222,7 @@ BEGIN
     WHERE
         up.CPA              = @CPA_Paciente
         AND r.FlgCanc           = 0
-        AND r.FlgFirmato        = 1   -- solo firmados
-        AND r.FlgPubblicato     = 1   -- solo publicados
+        AND r.FlgPubblicato     = -1  -- publicado (convención típica Winlab/VB: -1 = true)
         AND r.FlgRiservato      = 0   -- excluir reservados
         AND (@SoloNoLeidos  = 0 OR rpm.FlgConsultato = 0)
         AND (@FechaDesde IS NULL OR r.Data >= @FechaDesde)
@@ -234,7 +243,7 @@ AS
 BEGIN
     SET NOCOUNT ON;
 
-    -- Verificar acceso: firmado, publicado, no reservado, no anulado
+    -- Paciente activo; referto vigente, publicado (FlgPubblicato=-1), no reservado
     IF NOT EXISTS (
         SELECT 1
         FROM RefertiPazientiMedici rpm
@@ -244,10 +253,9 @@ BEGIN
             up.CPA              = @CPA_Paciente
             AND rpm.IdReferto       = @IdReferto
             AND r.FlgCanc           = 0
-            AND r.FlgFirmato        = 1
-            AND r.FlgPubblicato     = 1
+            AND r.FlgPubblicato     = -1
             AND r.FlgRiservato      = 0
-            AND up.FlgDisabilitato  <> -1  -- 0=activo, -1=deshabilitado
+            AND up.FlgDisabilitato  = 0
     )
     BEGIN
         RAISERROR('Acceso denegado: el paciente %s no tiene permiso sobre el referto %d.', 16, 1, @CPA_Paciente, @IdReferto);
@@ -272,7 +280,11 @@ BEGIN
         LEFT  JOIN UtentiMedici um           ON um.CPA           = rpm.CPA_Medico
     WHERE
         rd.IdReferto  = @IdReferto
-        AND up.CPA    = @CPA_Paciente;
+        AND up.CPA    = @CPA_Paciente
+        AND up.FlgDisabilitato = 0
+        AND r.FlgCanc          = 0
+        AND r.FlgPubblicato    = -1
+        AND r.FlgRiservato     = 0;
 
     -- Marcar como consultado automáticamente
     UPDATE RefertiPazientiMedici
@@ -312,8 +324,7 @@ BEGIN
     WHERE
         up.CPA          = @CPA_Paciente
         AND r.FlgCanc       = 0
-        AND r.FlgFirmato    = 1
-        AND r.FlgPubblicato = 1
+        AND r.FlgPubblicato = -1
         AND r.FlgRiservato  = 0
     GROUP BY
         up.CPA, up.Cognome, up.Nome, up.CodiceFiscale, up.Email;
