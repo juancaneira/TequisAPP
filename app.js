@@ -134,8 +134,9 @@ app.post('/login', async (req, res) => {
 
       if (!medico.PasswordApp) {
         return res.status(401).json({
-          error: 'Contraseña de app no configurada',
-          accion: 'Usa el endpoint POST /setup-password para crear tu contraseña de acceso'
+          ok: false,
+          necesita_setup: true,
+          error: 'Contraseña de app no configurada. Usa POST /setup-password'
         });
       }
 
@@ -145,12 +146,11 @@ app.post('/login', async (req, res) => {
       }
 
       return res.status(200).json({
+        ok: true,
         rol: 'medico',
-        usuario: {
-          CPA_Medico: medico.CPA,
-          nombre: `${medico.Titolo || ''} ${medico.Nome || ''} ${medico.Cognome || ''}`.trim(),
-          email: medico.Email,
-        },
+        cpa: medico.CPA,
+        nombre: `${medico.Titolo || ''} ${medico.Nome || ''} ${medico.Cognome || ''}`.trim(),
+        email: medico.Email || '',
       });
     }
 
@@ -172,8 +172,9 @@ app.post('/login', async (req, res) => {
 
       if (!paciente.PasswordApp) {
         return res.status(401).json({
-          error: 'Contraseña de app no configurada',
-          accion: 'Usa el endpoint POST /setup-password para crear tu contraseña de acceso'
+          ok: false,
+          necesita_setup: true,
+          error: 'Contraseña de app no configurada. Usa POST /setup-password'
         });
       }
 
@@ -183,12 +184,11 @@ app.post('/login', async (req, res) => {
       }
 
       return res.status(200).json({
+        ok: true,
         rol: 'paciente',
-        usuario: {
-          CPA_Paciente: paciente.CPA,
-          nombre: `${paciente.Nome || ''} ${paciente.Cognome || ''}`.trim(),
-          email: paciente.Email,
-        },
+        cpa: paciente.CPA,
+        nombre: `${paciente.Nome || ''} ${paciente.Cognome || ''}`.trim(),
+        email: paciente.Email || '',
       });
     }
 
@@ -306,6 +306,105 @@ app.get('/medico/descargar/:id', async (req, res) => {
 });
 
 /**
+ * GET /paciente/informes
+ *
+ * Query param requerido: CPA_Paciente
+ * Ejemplo: GET /paciente/informes?CPA_Paciente=12345
+ *
+ * Ejecuta el SP: sp_Paciente_ListarPDFs @CPA_Paciente
+ */
+app.get('/paciente/informes', async (req, res) => {
+  const { CPA_Paciente } = req.query;
+
+  if (!CPA_Paciente) {
+    return res.status(400).json({ error: 'El parámetro CPA_Paciente es requerido' });
+  }
+
+  try {
+    const db = await getPool();
+
+    const result = await db.request()
+      .input('CPA_Paciente', sql.NVarChar, CPA_Paciente)
+      .execute('sp_Paciente_ListarPDFs');
+
+    return res.status(200).json({
+      total: result.recordset.length,
+      informes: result.recordset,
+    });
+
+  } catch (err) {
+    console.error('Error en /paciente/informes:', err.message);
+    return res.status(500).json({ error: 'Error al obtener los informes' });
+  }
+});
+
+/**
+ * GET /paciente/descargar/:id?CPA_Paciente=XXXX
+ *
+ * Parámetros:
+ *   - id            : IdReferto numérico en la ruta
+ *   - CPA_Paciente  : CPA del paciente como query param
+ *
+ * Ejecuta: sp_Paciente_ObtenerPDF @CPA_Paciente, @IdReferto
+ * Devuelve el campo BlobReferto descifrado como stream PDF.
+ */
+app.get('/paciente/descargar/:id', async (req, res) => {
+  const idReferto   = parseInt(req.params.id, 10);
+  const cpaPaciente = req.query.CPA_Paciente;
+
+  if (isNaN(idReferto)) {
+    return res.status(400).json({ error: 'El id debe ser un número entero' });
+  }
+
+  if (!cpaPaciente) {
+    return res.status(400).json({ error: 'El parámetro CPA_Paciente es requerido' });
+  }
+
+  try {
+    const db = await getPool();
+
+    const result = await db.request()
+      .input('CPA_Paciente', sql.VarChar, cpaPaciente)
+      .input('IdReferto',    sql.BigInt,  idReferto)
+      .execute('sp_Paciente_ObtenerPDF');
+
+    if (!result.recordset || result.recordset.length === 0) {
+      return res.status(404).json({ error: 'Informe no encontrado' });
+    }
+
+    const registro   = result.recordset[0];
+    const blobCifrado = registro.BlobReferto;
+
+    if (!blobCifrado || blobCifrado.length === 0) {
+      return res.status(404).json({ error: 'El informe no tiene contenido (BlobReferto vacío)' });
+    }
+
+    let pdfBuffer;
+    try {
+      pdfBuffer = descifrarBlobTesi(blobCifrado);
+    } catch (errDescifrado) {
+      console.error('Error al descifrar BlobReferto:', errDescifrado.message);
+      return res.status(500).json({ error: 'No se pudo descifrar el informe: ' + errDescifrado.message });
+    }
+
+    const nombreArchivo = registro.NomeFile
+      ? registro.NomeFile.replace(/[^a-zA-Z0-9._-]/g, '_')
+      : `informe_${idReferto}.pdf`;
+
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `inline; filename="${nombreArchivo}"`);
+    res.setHeader('Content-Length', pdfBuffer.length);
+    res.setHeader('Cache-Control', 'no-cache');
+
+    return res.end(pdfBuffer);
+
+  } catch (err) {
+    console.error('Error en /paciente/descargar/:id:', err.message);
+    return res.status(500).json({ error: 'Error al descargar el informe' });
+  }
+});
+
+/**
  * POST /setup-password
  *
  * Permite a un médico o paciente crear su contraseña de acceso a la app
@@ -405,7 +504,9 @@ async function iniciar() {
       console.log(`  POST http://localhost:${PORT}/login`);
       console.log(`  POST http://localhost:${PORT}/setup-password`);
       console.log(`  GET  http://localhost:${PORT}/medico/informes?CPA_Medico=XXXX`);
-      console.log(`  GET  http://localhost:${PORT}/medico/descargar/:id\n`);
+      console.log(`  GET  http://localhost:${PORT}/medico/descargar/:id?CPA_Medico=XXXX`);
+      console.log(`  GET  http://localhost:${PORT}/paciente/informes?CPA_Paciente=XXXX`);
+      console.log(`  GET  http://localhost:${PORT}/paciente/descargar/:id?CPA_Paciente=XXXX\n`);
     });
   } catch (err) {
     console.error('No se pudo iniciar la API:', err.message);
