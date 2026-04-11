@@ -27,13 +27,21 @@ function descifrarBlobTesi(bufferCifrado) {
     throw new Error('Blob descifrado demasiado corto: ' + descifrado.length + ' bytes');
   }
 
-  // Longitud real de los datos (UInt32 little-endian en bytes 4-7)
-  const longitudDatos = descifrado.readUInt32LE(4);
+  // Header del formato TesiWeb:
+  //   bytes 0-7  : bloque inicial (firma/padding)
+  //   bytes 8-11 : longitud real del PDF (UInt32 little-endian)
+  //                CopyMemory(ref num6, 8, ByteArray, 4) → srcOffset=8
+  //   bytes 12+  : datos reales del PDF
+  console.log('Blob header (primeros 16 bytes):', descifrado.slice(0, 16).toString('hex'));
+
+  const longitudDatos = descifrado.readUInt32LE(8);
   const padding = descifrado.length - longitudDatos;
+
+  console.log(`Blob: total=${descifrado.length}, longitudDatos=${longitudDatos}, padding=${padding}`);
 
   // Validar que el padding esté entre 12 y 19 (formato TesiWeb)
   if (padding < 12 || padding > 19) {
-    throw new Error(`Formato de blob inválido: padding=${padding}, longitud=${longitudDatos}, total=${descifrado.length}`);
+    throw new Error(`Formato de blob inválido: padding=${padding}, longitud=${longitudDatos}, total=${descifrado.length}. Header: ${descifrado.slice(0, 16).toString('hex')}`);
   }
 
   // Los datos reales (PDF) comienzan en byte 12
