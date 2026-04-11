@@ -4,6 +4,18 @@ Historial de cambios del proyecto. Formato basado en [Keep a Changelog](https://
 
 ---
 
+## [1.4.0] — 2026-04-11
+
+### Añadido
+- **`GET /paciente/informes?CPA_Paciente=`**: lista los informes de un paciente ejecutando `sp_Paciente_ListarPDFs`.
+- **`GET /paciente/descargar/:id?CPA_Paciente=`**: descarga y descifra el PDF del paciente ejecutando `sp_Paciente_ObtenerPDF`.
+
+### Cambiado
+- Respuesta de `POST /login` estandarizada para FlutterFlow: campos planos `ok`, `rol`, `cpa`, `nombre`, `email` (en lugar de objeto anidado `usuario`).
+- Respuesta de primer acceso sin contraseña ahora incluye `necesita_setup: true` para que FlutterFlow pueda redirigir a la pantalla de configuración automáticamente.
+
+---
+
 ## [1.3.0] — 2026-04-10
 
 ### Corregido
@@ -80,7 +92,9 @@ Historial de cambios del proyecto. Formato basado en [Keep a Changelog](https://
 | `POST` | `/login` | Autenticación de médico o paciente |
 | `POST` | `/setup-password` | Crear o cambiar `PasswordApp` |
 | `GET` | `/medico/informes?CPA_Medico=` | Listar informes del médico |
-| `GET` | `/medico/descargar/:id?CPA_Medico=` | Descargar PDF descifrado |
+| `GET` | `/medico/descargar/:id?CPA_Medico=` | Descargar PDF descifrado (médico) |
+| `GET` | `/paciente/informes?CPA_Paciente=` | Listar informes del paciente |
+| `GET` | `/paciente/descargar/:id?CPA_Paciente=` | Descargar PDF descifrado (paciente) |
 
 ## Tecnologías
 
