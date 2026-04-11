@@ -32,12 +32,8 @@ function descifrarBlobTesi(bufferCifrado) {
   //   bytes 8-11 : longitud real del PDF (UInt32 little-endian)
   //                CopyMemory(ref num6, 8, ByteArray, 4) → srcOffset=8
   //   bytes 12+  : datos reales del PDF
-  console.log('Blob header (primeros 16 bytes):', descifrado.slice(0, 16).toString('hex'));
-
   const longitudDatos = descifrado.readUInt32LE(8);
   const padding = descifrado.length - longitudDatos;
-
-  console.log(`Blob: total=${descifrado.length}, longitudDatos=${longitudDatos}, padding=${padding}`);
 
   // Validar que el padding esté entre 12 y 19 (formato TesiWeb)
   if (padding < 12 || padding > 19) {
