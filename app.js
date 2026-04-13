@@ -224,10 +224,7 @@ app.get('/medico/informes', async (req, res) => {
       .input('CPA_Medico', sql.NVarChar, CPA_Medico)
       .execute('sp_Medico_ListarPDFs');
 
-    return res.status(200).json({
-      total: result.recordset.length,
-      informes: result.recordset,
-    });
+    return res.status(200).json(result.recordset);
 
   } catch (err) {
     console.error('Error en /medico/informes:', err.message);
@@ -327,10 +324,7 @@ app.get('/paciente/informes', async (req, res) => {
       .input('CPA_Paciente', sql.NVarChar, CPA_Paciente)
       .execute('sp_Paciente_ListarPDFs');
 
-    return res.status(200).json({
-      total: result.recordset.length,
-      informes: result.recordset,
-    });
+    return res.status(200).json(result.recordset);
 
   } catch (err) {
     console.error('Error en /paciente/informes:', err.message);
