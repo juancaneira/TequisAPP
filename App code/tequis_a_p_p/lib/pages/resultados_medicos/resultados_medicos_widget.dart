@@ -102,6 +102,22 @@ class _ResultadosMedicosWidgetState extends State<ResultadosMedicosWidget> {
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
+              Text(
+                FFAppState().usuarioCPA,
+                style: FlutterFlowTheme.of(context).bodyMedium.override(
+                      font: GoogleFonts.inter(
+                        fontWeight:
+                            FlutterFlowTheme.of(context).bodyMedium.fontWeight,
+                        fontStyle:
+                            FlutterFlowTheme.of(context).bodyMedium.fontStyle,
+                      ),
+                      letterSpacing: 0.0,
+                      fontWeight:
+                          FlutterFlowTheme.of(context).bodyMedium.fontWeight,
+                      fontStyle:
+                          FlutterFlowTheme.of(context).bodyMedium.fontStyle,
+                    ),
+              ),
               Padding(
                 padding: EdgeInsetsDirectional.fromSTEB(16.0, 8.0, 16.0, 24.0),
                 child: FutureBuilder<ApiCallResponse>(

@@ -4,6 +4,7 @@ import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
 import 'dart:ui';
 import '/index.dart';
+import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -278,6 +279,14 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                                       TextFormField(
                                         controller: _model.textController1,
                                         focusNode: _model.textFieldFocusNode1,
+                                        onChanged: (_) => EasyDebounce.debounce(
+                                          '_model.textController1',
+                                          Duration(milliseconds: 2000),
+                                          () async {
+                                            _model.campoCPA =
+                                                _model.textController1.text;
+                                          },
+                                        ),
                                         autofocus: false,
                                         textInputAction: TextInputAction.next,
                                         obscureText: false,
@@ -380,8 +389,6 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                                                       .bodyMedium
                                                       .fontStyle,
                                             ),
-                                        keyboardType:
-                                            TextInputType.emailAddress,
                                         validator: _model
                                             .textController1Validator
                                             .asValidator(context),
@@ -418,6 +425,14 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                                       TextFormField(
                                         controller: _model.textController2,
                                         focusNode: _model.textFieldFocusNode2,
+                                        onChanged: (_) => EasyDebounce.debounce(
+                                          '_model.textController2',
+                                          Duration(milliseconds: 2000),
+                                          () async {
+                                            _model.campoContrasena =
+                                                _model.textController2.text;
+                                          },
+                                        ),
                                         autofocus: false,
                                         textInputAction: TextInputAction.done,
                                         obscureText: !_model.passwordVisibility,
@@ -574,25 +589,37 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                               ),
                               FFButtonWidget(
                                 onPressed: () async {
-                                  _model.loginResponse = await LoginCall.call(
-                                    usuario: _model.textController1.text,
-                                    contrasena: _model.textController2.text,
+                                  _model.loginResponse =
+                                      await TequisAPIGroup.loginCall.call(
+                                    usuario: _model.campoCPA,
+                                    contrasena: _model.campoContrasena,
                                   );
 
                                   if ((_model.loginResponse?.succeeded ??
                                           true) ==
                                       true) {
-                                    FFAppState().usuarioCPA = LoginCall.cpa(
-                                      (_model.loginResponse?.jsonBody ?? ''),
-                                    ).toString();
+                                    FFAppState().usuarioCPA =
+                                        TequisAPIGroup.loginCall
+                                            .cpa(
+                                              (_model.loginResponse?.jsonBody ??
+                                                  ''),
+                                            )
+                                            .toString();
                                     FFAppState().usuarioNombre =
-                                        LoginCall.nombre(
-                                      (_model.loginResponse?.jsonBody ?? ''),
-                                    ).toString();
+                                        TequisAPIGroup.loginCall
+                                            .nombre(
+                                              (_model.loginResponse?.jsonBody ??
+                                                  ''),
+                                            )
+                                            .toString();
                                     safeSetState(() {});
-                                    FFAppState().usuarioRol = LoginCall.rol(
-                                      (_model.loginResponse?.jsonBody ?? ''),
-                                    ).toString();
+                                    FFAppState().usuarioRol =
+                                        TequisAPIGroup.loginCall
+                                            .rol(
+                                              (_model.loginResponse?.jsonBody ??
+                                                  ''),
+                                            )
+                                            .toString();
                                     safeSetState(() {});
                                     FFAppState().estaLogueado = true;
                                     safeSetState(() {});
@@ -606,7 +633,8 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                                       context: context,
                                       builder: (alertDialogContext) {
                                         return AlertDialog(
-                                          title: Text(LoginCall.error(
+                                          title: Text(
+                                              TequisAPIGroup.loginCall.error(
                                             (_model.loginResponse?.jsonBody ??
                                                 ''),
                                           )!),

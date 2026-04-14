@@ -5,11 +5,18 @@ import '/flutter_flow/flutter_flow_widgets.dart';
 import 'dart:ui';
 import '/index.dart';
 import 'loginparamedicos_widget.dart' show LoginparamedicosWidget;
+import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 class LoginparamedicosModel extends FlutterFlowModel<LoginparamedicosWidget> {
+  ///  Local state fields for this page.
+
+  String? campoCPA;
+
+  String? campoContrasena;
+
   ///  State fields for stateful widgets in this page.
 
   // State field(s) for TextField widget.
@@ -21,7 +28,7 @@ class LoginparamedicosModel extends FlutterFlowModel<LoginparamedicosWidget> {
   TextEditingController? textController2;
   late bool passwordVisibility;
   String? Function(BuildContext, String?)? textController2Validator;
-  // Stores action output result for [Backend Call - API (Login)] action in Button widget.
+  // Stores action output result for [Backend Call - API (login)] action in Button widget.
   ApiCallResponse? loginResponse;
 
   @override

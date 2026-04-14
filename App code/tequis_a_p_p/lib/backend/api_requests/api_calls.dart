@@ -20,6 +20,7 @@ class TequisAPIGroup {
       ListarInformesPacienteCall();
   static ConfigurarContrasenaCall configurarContrasenaCall =
       ConfigurarContrasenaCall();
+  static LoginCall loginCall = LoginCall();
 }
 
 class ListarInformesMedicoCall {
@@ -226,23 +227,25 @@ class ConfigurarContrasenaCall {
       ));
 }
 
-/// End TequisAPI Group Code
-
 class LoginCall {
-  static Future<ApiCallResponse> call({
+  Future<ApiCallResponse> call({
     String? usuario = '',
     String? contrasena = '',
   }) async {
+    final baseUrl = TequisAPIGroup.getBaseUrl();
+
     final ffApiRequestBody = '''
 {
-  "usuario": "[usuario]",
-  "contrasena": "[contrasena]"
+  "usuario": "usuario",
+  "contrasena": "contrasena"
 }''';
     return ApiManager.instance.makeApiCall(
-      callName: 'Login',
-      apiUrl: 'login',
+      callName: 'login',
+      apiUrl: '${baseUrl}/login',
       callType: ApiCallType.POST,
-      headers: {},
+      headers: {
+        'Content-Type': 'application/json',
+      },
       params: {},
       body: ffApiRequestBody,
       bodyType: BodyType.JSON,
@@ -255,36 +258,33 @@ class LoginCall {
     );
   }
 
-  static dynamic ok(dynamic response) => getJsonField(
-        response,
-        r'''$.ok''',
-      );
-  static dynamic rol(dynamic response) => getJsonField(
-        response,
-        r'''$.rol''',
-      );
-  static dynamic cpa(dynamic response) => getJsonField(
-        response,
-        r'''$.cpa''',
-      );
-  static dynamic nombre(dynamic response) => getJsonField(
-        response,
-        r'''$.nombre''',
-      );
-  static dynamic email(dynamic response) => getJsonField(
-        response,
-        r'''$.email''',
-      );
-  static List? necesitasetup(dynamic response) => getJsonField(
-        response,
-        r'''$.necesita_setup''',
-        true,
-      ) as List?;
-  static String? error(dynamic response) => castToType<String>(getJsonField(
+  String? error(dynamic response) => castToType<String>(getJsonField(
         response,
         r'''$.error''',
       ));
+  dynamic ok(dynamic response) => getJsonField(
+        response,
+        r'''$.ok''',
+      );
+  dynamic rol(dynamic response) => getJsonField(
+        response,
+        r'''$.rol''',
+      );
+  dynamic cpa(dynamic response) => getJsonField(
+        response,
+        r'''$.cpa''',
+      );
+  dynamic nombre(dynamic response) => getJsonField(
+        response,
+        r'''$.nombre''',
+      );
+  dynamic email(dynamic response) => getJsonField(
+        response,
+        r'''$.email''',
+      );
 }
+
+/// End TequisAPI Group Code
 
 class ApiPagingParams {
   int nextPageNumber = 0;
