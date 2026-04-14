@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Prueba Login API</title>
+</head>
+<body>
+  <button id="btn">Probar login</button>
+  <pre id="out"></pre>
+
+  <script>
+    document.getElementById('btn').addEventListener('click', async () => {
+      try {
+        const r = await fetch('https://api.laboratoriotequis.com.mx/login', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            usuario: 'JCNP',
+            contrasena: '6272Mapa'
+          })
+        });
+
+        const text = await r.text();
+        document.getElementById('out').textContent =
+          'Status: ' + r.status + '\n\n' + text;
+      } catch (e) {
+        document.getElementById('out').textContent = 'Error: ' + e;
+      }
+    });
+  </script>
+</body>
+</html>
