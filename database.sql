@@ -75,7 +75,7 @@ BEGIN
         r.DataConsegna                  AS FechaEntrega,
         -- Paciente
         p.Id                            AS IdPaciente,
-        p.Cognome + ' ' + p.Nome        AS NombrePaciente,
+        ISNULL(p.Cognome, '') + ISNULL(' ' + NULLIF(p.Nome, ''), '') AS NombrePaciente,
         p.CodiceFiscale                 AS CFPaciente,
         p.DataNascita                   AS NacimientoPaciente,
         -- Estado del informe
@@ -144,7 +144,7 @@ BEGIN
         r.Codice                        AS CodigoReferto,
         r.Data                          AS FechaReferto,
         r.CodiceServizio                AS Servicio,
-        p.Cognome + ' ' + p.Nome        AS NombrePaciente,
+        ISNULL(p.Cognome, '') + ISNULL(' ' + NULLIF(p.Nome, ''), '') AS NombrePaciente,
         p.CodiceFiscale                 AS CFPaciente,
         um.Cognome + ' ' + um.Nome      AS NombreMedico,
         DATALENGTH(rd.BlobReferto) / 1024 AS TamanoPDFkb
@@ -179,7 +179,7 @@ BEGIN
 
     SELECT
         um.CPA,
-        um.Titolo + ' ' + um.Cognome + ' ' + um.Nome AS NombreMedico,
+        NULLIF(RTRIM(ISNULL(um.Titolo + ' ', '') + ISNULL(um.Cognome, '') + ISNULL(' ' + NULLIF(um.Nome, ''), '')), '') AS NombreMedico,
         um.Email,
         COUNT(*)                                       AS TotalPDFs,
         SUM(CASE WHEN rpm.FlgConsultato = 0 THEN 1 ELSE 0 END) AS PendientesLeer,
@@ -233,7 +233,7 @@ BEGIN
         r.CodiceServizio                AS Servicio,
         r.CodiceEntitaErogante          AS UnidadLaboratorio,
         -- Médico asignado
-        um.Titolo + ' ' + um.Cognome + ' ' + um.Nome AS NombreMedico,
+        NULLIF(RTRIM(ISNULL(um.Titolo + ' ', '') + ISNULL(um.Cognome, '') + ISNULL(' ' + NULLIF(um.Nome, ''), '')), '') AS NombreMedico,
         -- Estado de lectura del paciente
         rpm.FlgConsultato               AS PacienteYaConsulto,
         -- Tamaño estimado
@@ -296,7 +296,7 @@ BEGIN
         r.CodiceServizio                    AS Servicio,
         r.CodiceEntitaErogante              AS Laboratorio,
         up.Cognome + ' ' + up.Nome          AS NombrePaciente,
-        um.Titolo + ' ' + um.Cognome + ' ' + um.Nome AS NombreMedico,
+        NULLIF(RTRIM(ISNULL(um.Titolo + ' ', '') + ISNULL(um.Cognome, '') + ISNULL(' ' + NULLIF(um.Nome, ''), '')), '') AS NombreMedico,
         DATALENGTH(rd.BlobReferto) / 1024   AS TamanoPDFkb
     FROM RefertiDocumento rd
         INNER JOIN Referti r                 ON r.Id             = rd.IdReferto
