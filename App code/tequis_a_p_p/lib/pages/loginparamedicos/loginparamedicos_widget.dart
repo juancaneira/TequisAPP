@@ -104,16 +104,25 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
               ),
               Padding(
                 padding: EdgeInsetsDirectional.fromSTEB(32.0, 0.0, 32.0, 0.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.max,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.max,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    return SingleChildScrollView(
+                      keyboardDismissBehavior:
+                          ScrollViewKeyboardDismissBehavior.onDrag,
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight,
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Column(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
                           ClipRRect(
                             borderRadius: BorderRadius.circular(8.0),
                             child: Image.asset(
@@ -169,9 +178,8 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                                       .fontStyle,
                                 ),
                           ),
-                        ],
-                      ),
-                    ),
+                              ],
+                            ),
                     Padding(
                       padding: EdgeInsetsDirectional.fromSTEB(
                           28.0, 32.0, 28.0, 32.0),
@@ -773,6 +781,10 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                       ),
                     ),
                   ],
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
