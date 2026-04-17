@@ -1,4 +1,5 @@
 import '/backend/api_requests/api_calls.dart';
+import '/pages/configurar_contrasena/configurar_contrasena_widget.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
@@ -8,6 +9,7 @@ import 'package:easy_debounce/easy_debounce.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'loginparamedicos_model.dart';
 export 'loginparamedicos_model.dart';
 
@@ -561,8 +563,27 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                               ),
                               Row(
                                 mainAxisSize: MainAxisSize.max,
-                                mainAxisAlignment: MainAxisAlignment.end,
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                 children: [
+                                  GestureDetector(
+                                    onTap: () => context.pushNamed(
+                                      ConfigurarContrasenaWidget.routeName,
+                                      queryParameters: {
+                                        'cpaInicial': serializeParam(
+                                          _model.textController1.text.trim(),
+                                          ParamType.String,
+                                        ),
+                                      },
+                                    ),
+                                    child: Text(
+                                      '¿No tienes contraseña?',
+                                      style: TextStyle(
+                                        color: Color(0xFF4A6CF7),
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
                                   Text(
                                     '¿Olvidaste tu contraseña?',
                                     style: FlutterFlowTheme.of(context)
@@ -599,35 +620,34 @@ class _LoginparamedicosWidgetState extends State<LoginparamedicosWidget> {
                                           true) ==
                                       true) {
                                     FFAppState().usuarioCPA =
-                                        TequisAPIGroup.loginCall
-                                            .cpa(
-                                              (_model.loginResponse?.jsonBody ??
-                                                  ''),
-                                            )
-                                            .toString();
+                                        TequisAPIGroup.loginCall.cpa(
+                                      (_model.loginResponse?.jsonBody ?? ''),
+                                    )!;
                                     FFAppState().usuarioNombre =
-                                        TequisAPIGroup.loginCall
-                                            .nombre(
-                                              (_model.loginResponse?.jsonBody ??
-                                                  ''),
-                                            )
-                                            .toString();
+                                        TequisAPIGroup.loginCall.nombre(
+                                      (_model.loginResponse?.jsonBody ?? ''),
+                                    )!;
                                     safeSetState(() {});
                                     FFAppState().usuarioRol =
-                                        TequisAPIGroup.loginCall
-                                            .rol(
-                                              (_model.loginResponse?.jsonBody ??
-                                                  ''),
-                                            )
-                                            .toString();
+                                        TequisAPIGroup.loginCall.rol(
+                                      (_model.loginResponse?.jsonBody ?? ''),
+                                    )!;
                                     safeSetState(() {});
                                     FFAppState().estaLogueado = true;
                                     safeSetState(() {});
+                                    // Persist session
+                                    final prefs = await SharedPreferences.getInstance();
+                                    await prefs.setString('session_cpa', FFAppState().usuarioCPA);
+                                    await prefs.setString('session_nombre', FFAppState().usuarioNombre);
+                                    await prefs.setString('session_rol', FFAppState().usuarioRol);
                                     if (Navigator.of(context).canPop()) {
                                       context.pop();
                                     }
-                                    context.pushNamed(
-                                        ResultadosMedicosWidget.routeName);
+                                    if (FFAppState().usuarioRol == 'medico') {
+                                      context.pushNamed(ResultadosMedicosWidget.routeName);
+                                    } else {
+                                      context.pushNamed(ResultadosMedicosWidget.routeName);
+                                    }
                                   } else {
                                     await showDialog(
                                       context: context,

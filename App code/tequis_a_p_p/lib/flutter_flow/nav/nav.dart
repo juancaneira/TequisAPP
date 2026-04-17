@@ -81,7 +81,24 @@ GoRouter createRouter(AppStateNotifier appStateNotifier) => GoRouter(
           name: ResultadosMedicosWidget.routeName,
           path: ResultadosMedicosWidget.routePath,
           builder: (context, params) => ResultadosMedicosWidget(),
-        )
+        ),
+        FFRoute(
+          name: LoginpacienteWidget.routeName,
+          path: LoginpacienteWidget.routePath,
+          builder: (context, params) => LoginpacienteWidget(),
+        ),
+        FFRoute(
+          name: ResultadosPacienteWidget.routeName,
+          path: ResultadosPacienteWidget.routePath,
+          builder: (context, params) => ResultadosPacienteWidget(),
+        ),
+        FFRoute(
+          name: ConfigurarContrasenaWidget.routeName,
+          path: ConfigurarContrasenaWidget.routePath,
+          builder: (context, params) => ConfigurarContrasenaWidget(
+            cpaInicial: params.getParam('cpaInicial', ParamType.String),
+          ),
+        ),
       ].map((r) => r.toRoute(appStateNotifier)).toList(),
     );
 

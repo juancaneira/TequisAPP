@@ -3,10 +3,13 @@ import '/flutter_flow/flutter_flow_icon_button.dart';
 import '/flutter_flow/flutter_flow_theme.dart';
 import '/flutter_flow/flutter_flow_util.dart';
 import '/flutter_flow/flutter_flow_widgets.dart';
+import '/flutter_flow/pdf_helper.dart';
 import 'dart:ui';
+import '/index.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'resultados_medicos_model.dart';
 export 'resultados_medicos_model.dart';
 
@@ -73,8 +76,8 @@ class _ResultadosMedicosWidgetState extends State<ResultadosMedicosWidget> {
               color: Color(0xFF12151C),
               size: 24.0,
             ),
-            onPressed: () {
-              print('IconButton pressed ...');
+            onPressed: () async {
+              context.pop();
             },
           ),
           title: Text(
@@ -93,7 +96,23 @@ class _ResultadosMedicosWidgetState extends State<ResultadosMedicosWidget> {
                       FlutterFlowTheme.of(context).headlineMedium.fontStyle,
                 ),
           ),
-          actions: [],
+          actions: [
+            IconButton(
+              icon: Icon(Icons.logout_rounded, color: Color(0xFF12151C), size: 24),
+              tooltip: 'Cerrar sesión',
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.remove('session_cpa');
+                await prefs.remove('session_nombre');
+                await prefs.remove('session_rol');
+                FFAppState().usuarioCPA = '';
+                FFAppState().usuarioNombre = '';
+                FFAppState().usuarioRol = '';
+                FFAppState().estaLogueado = false;
+                context.goNamed(InicioWidget.routeName);
+              },
+            ),
+          ],
           centerTitle: false,
           elevation: 0.0,
         ),
@@ -102,461 +121,378 @@ class _ResultadosMedicosWidgetState extends State<ResultadosMedicosWidget> {
           child: Column(
             mainAxisSize: MainAxisSize.max,
             children: [
-              Text(
-                FFAppState().usuarioCPA,
-                style: FlutterFlowTheme.of(context).bodyMedium.override(
-                      font: GoogleFonts.inter(
-                        fontWeight:
-                            FlutterFlowTheme.of(context).bodyMedium.fontWeight,
-                        fontStyle:
-                            FlutterFlowTheme.of(context).bodyMedium.fontStyle,
+              Padding(
+                padding: EdgeInsets.fromLTRB(16, 6, 16, 0),
+                child: Row(
+                  children: [
+                    Icon(Icons.medical_services_outlined, color: Color(0xFF4A6CF7), size: 18),
+                    SizedBox(width: 6),
+                    Text(
+                      FFAppState().usuarioNombre,
+                      style: TextStyle(
+                        color: Color(0xFF12151C),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
                       ),
-                      letterSpacing: 0.0,
-                      fontWeight:
-                          FlutterFlowTheme.of(context).bodyMedium.fontWeight,
-                      fontStyle:
-                          FlutterFlowTheme.of(context).bodyMedium.fontStyle,
                     ),
+                  ],
+                ),
               ),
               Padding(
-                padding: EdgeInsetsDirectional.fromSTEB(16.0, 8.0, 16.0, 24.0),
-                child: FutureBuilder<ApiCallResponse>(
-                  future: TequisAPIGroup.listarInformesMedicoCall.call(
-                    cpaMedico: FFAppState().usuarioCPA,
+                padding: EdgeInsets.fromLTRB(16, 10, 16, 4),
+                child: TextField(
+                  controller: _model.busquedaController,
+                  focusNode: _model.busquedaFocus,
+                  onChanged: (val) => setState(() => _model.filtroBusqueda = val.trim().toLowerCase()),
+                  style: TextStyle(color: Color(0xFF12151C), fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Buscar por nombre de paciente...',
+                    hintStyle: TextStyle(color: Color(0xFFBDBDBD), fontSize: 14),
+                    prefixIcon: Icon(Icons.search, color: Color(0xFF4A6CF7), size: 20),
+                    suffixIcon: _model.filtroBusqueda.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, color: Color(0xFF9E9E9E), size: 18),
+                            onPressed: () => setState(() {
+                              _model.busquedaController?.clear();
+                              _model.filtroBusqueda = '';
+                            }),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: EdgeInsets.symmetric(vertical: 10),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFE0E0E0)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFFE0E0E0)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: Color(0xFF4A6CF7), width: 2),
+                    ),
                   ),
-                  builder: (context, snapshot) {
-                    // Customize what your widget looks like when it's loading.
-                    if (!snapshot.hasData) {
-                      return Center(
-                        child: SizedBox(
-                          width: 50.0,
-                          height: 50.0,
-                          child: CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              FlutterFlowTheme.of(context).primary,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    final listViewListarInformesMedicoResponse = snapshot.data!;
+                ),
+              ),
+              Expanded(
+                child: Padding(
+  padding: EdgeInsetsDirectional.fromSTEB(16, 8, 16, 24),
+  child: FutureBuilder<ApiCallResponse>(
+    future: TequisAPIGroup.listarInformesMedicoCall.call(
+      cpaMedico: FFAppState().usuarioCPA,
+    ),
+    builder: (context, snapshot) {
+      if (!snapshot.hasData) {
+        return Center(
+          child: SizedBox(
+            width: 50,
+            height: 50,
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(
+                FlutterFlowTheme.of(context).primary,
+              ),
+            ),
+          ),
+        );
+      }
 
-                    return ListView(
-                      padding: EdgeInsets.zero,
-                      shrinkWrap: true,
-                      scrollDirection: Axis.vertical,
-                      children: [
-                        Padding(
-                          padding: EdgeInsetsDirectional.fromSTEB(
-                              0.0, 0.0, 0.0, 12.0),
-                          child: Container(
-                            width: double.infinity,
+      final response = snapshot.data!;
+      final todosInformes = getJsonField(response.jsonBody, r'$') as List? ?? [];
+      final informes = _model.filtroBusqueda.isEmpty
+          ? todosInformes
+          : todosInformes.where((item) {
+              final nombre = (getJsonField(item, r'$.NombrePaciente')?.toString() ?? '').toLowerCase();
+              return nombre.contains(_model.filtroBusqueda);
+            }).toList();
+
+      if (todosInformes.isEmpty) {
+        return Center(
+          child: Text(
+            'No hay informes disponibles',
+            style: FlutterFlowTheme.of(context).bodyMedium,
+          ),
+        );
+      }
+
+      if (informes.isEmpty) {
+        return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.search_off_rounded, color: Color(0xFFBDBDBD), size: 48),
+            SizedBox(height: 12),
+            Text(
+              'Sin resultados para "${_model.busquedaController?.text}"',
+              style: TextStyle(color: Color(0xFF9E9E9E), fontSize: 14),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        );
+      }
+
+      return ListView.builder(
+        padding: EdgeInsets.zero,
+        shrinkWrap: false,
+        scrollDirection: Axis.vertical,
+        itemCount: informes.length,
+        itemBuilder: (context, index) {
+          final item = informes[index];
+
+          return Padding(
+            padding: EdgeInsetsDirectional.fromSTEB(0, 0, 0, 12),
+            child: Container(
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                boxShadow: [
+                  BoxShadow(
+                    blurRadius: 8,
+                    color: Color(0x1A000000),
+                    offset: Offset(0, 2),
+                  )
+                ],
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(16),
+                child: Column(
+                  mainAxisSize: MainAxisSize.max,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(0, 0, 0, 8),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.max,
+                        children: [
+                          Container(
+                            width: 40,
+                            height: 40,
                             decoration: BoxDecoration(
-                              color: Colors.white,
-                              boxShadow: [
-                                BoxShadow(
-                                  blurRadius: 8.0,
-                                  color: Color(0x1A000000),
-                                  offset: Offset(
-                                    0.0,
-                                    2.0,
-                                  ),
-                                )
-                              ],
-                              borderRadius: BorderRadius.circular(16.0),
+                              color: Color(0xFFE8F0FE),
+                              shape: BoxShape.circle,
                             ),
-                            child: Padding(
-                              padding: EdgeInsets.all(16.0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.max,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Padding(
-                                    padding: EdgeInsetsDirectional.fromSTEB(
-                                        0.0, 0.0, 0.0, 8.0),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.max,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Row(
-                                          mainAxisSize: MainAxisSize.max,
-                                          children: [
-                                            Container(
-                                              width: 40.0,
-                                              height: 40.0,
-                                              decoration: BoxDecoration(
-                                                color: Color(0xFFE8F0FE),
-                                                shape: BoxShape.circle,
-                                              ),
-                                              child: Align(
-                                                alignment: AlignmentDirectional(
-                                                    0.0, 0.0),
-                                                child: Icon(
-                                                  Icons.person_outline,
-                                                  color: Color(0xFF4A6CF7),
-                                                  size: 20.0,
-                                                ),
-                                              ),
-                                            ),
-                                            Column(
-                                              mainAxisSize: MainAxisSize.max,
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Text(
-                                                  'Paciente',
-                                                  style: FlutterFlowTheme.of(
-                                                          context)
-                                                      .labelSmall
-                                                      .override(
-                                                        font: GoogleFonts.inter(
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          fontStyle:
-                                                              FlutterFlowTheme.of(
-                                                                      context)
-                                                                  .labelSmall
-                                                                  .fontStyle,
-                                                        ),
-                                                        color:
-                                                            Color(0xFF9E9E9E),
-                                                        fontSize: 11.0,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight:
-                                                            FontWeight.w500,
-                                                        fontStyle:
-                                                            FlutterFlowTheme.of(
-                                                                    context)
-                                                                .labelSmall
-                                                                .fontStyle,
-                                                      ),
-                                                ),
-                                                Text(
-                                                  valueOrDefault<String>(
-                                                    getJsonField(
-                                                      listViewListarInformesMedicoResponse
-                                                          .jsonBody,
-                                                      r'''$.NombrePaciente''',
-                                                    )?.toString(),
-                                                    'Nombre del paciente',
-                                                  ),
-                                                  style: FlutterFlowTheme.of(
-                                                          context)
-                                                      .bodyMedium
-                                                      .override(
-                                                        font: GoogleFonts.inter(
-                                                          fontWeight:
-                                                              FontWeight.w600,
-                                                          fontStyle:
-                                                              FlutterFlowTheme.of(
-                                                                      context)
-                                                                  .bodyMedium
-                                                                  .fontStyle,
-                                                        ),
-                                                        color:
-                                                            Color(0xFF12151C),
-                                                        fontSize: 15.0,
-                                                        letterSpacing: 0.0,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        fontStyle:
-                                                            FlutterFlowTheme.of(
-                                                                    context)
-                                                                .bodyMedium
-                                                                .fontStyle,
-                                                      ),
-                                                ),
-                                              ],
-                                            ),
-                                          ].divide(SizedBox(width: 8.0)),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Container(
-                                    width: 80.0,
-                                    height: 26.0,
-                                    decoration: BoxDecoration(
-                                      color: Color(0xFFE8F5E9),
-                                      borderRadius: BorderRadius.circular(13.0),
-                                    ),
-                                    child: Align(
-                                      alignment: AlignmentDirectional(0.0, 0.0),
-                                      child: Padding(
-                                        padding: EdgeInsets.all(8.0),
-                                        child: Text(
-                                          'Disponible',
-                                          style: FlutterFlowTheme.of(context)
-                                              .labelSmall
-                                              .override(
-                                                font: GoogleFonts.inter(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontStyle:
-                                                      FlutterFlowTheme.of(
-                                                              context)
-                                                          .labelSmall
-                                                          .fontStyle,
-                                                ),
-                                                color: Color(0xFF388E3C),
-                                                fontSize: 11.0,
-                                                letterSpacing: 0.0,
-                                                fontWeight: FontWeight.w600,
-                                                fontStyle:
-                                                    FlutterFlowTheme.of(context)
-                                                        .labelSmall
-                                                        .fontStyle,
-                                              ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Divider(
-                                    height: 1.0,
-                                    thickness: 1.0,
-                                    color: Color(0xFFF0F0F0),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsetsDirectional.fromSTEB(
-                                        0.0, 10.0, 0.0, 0.0),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.max,
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Column(
-                                          mainAxisSize: MainAxisSize.max,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Fecha de Reporte',
-                                              style: FlutterFlowTheme.of(
-                                                      context)
-                                                  .labelSmall
-                                                  .override(
-                                                    font: GoogleFonts.inter(
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      fontStyle:
-                                                          FlutterFlowTheme.of(
-                                                                  context)
-                                                              .labelSmall
-                                                              .fontStyle,
-                                                    ),
-                                                    color: Color(0xFF9E9E9E),
-                                                    fontSize: 11.0,
-                                                    letterSpacing: 0.0,
-                                                    fontWeight: FontWeight.w500,
-                                                    fontStyle:
-                                                        FlutterFlowTheme.of(
-                                                                context)
-                                                            .labelSmall
-                                                            .fontStyle,
-                                                  ),
-                                            ),
-                                            Padding(
-                                              padding: EdgeInsetsDirectional
-                                                  .fromSTEB(0.0, 4.0, 0.0, 0.0),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.max,
-                                                children: [
-                                                  Icon(
-                                                    Icons
-                                                        .calendar_today_outlined,
-                                                    color: Color(0xFF4A6CF7),
-                                                    size: 14.0,
-                                                  ),
-                                                  Text(
-                                                    valueOrDefault<String>(
-                                                      getJsonField(
-                                                        listViewListarInformesMedicoResponse
-                                                            .jsonBody,
-                                                        r'''$.FechaReferto''',
-                                                      )?.toString(),
-                                                      'Fecha de Reporte',
-                                                    ),
-                                                    style: FlutterFlowTheme.of(
-                                                            context)
-                                                        .bodyMedium
-                                                        .override(
-                                                          font:
-                                                              GoogleFonts.inter(
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            fontStyle:
-                                                                FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .bodyMedium
-                                                                    .fontStyle,
-                                                          ),
-                                                          color:
-                                                              Color(0xFF12151C),
-                                                          fontSize: 13.0,
-                                                          letterSpacing: 0.0,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          fontStyle:
-                                                              FlutterFlowTheme.of(
-                                                                      context)
-                                                                  .bodyMedium
-                                                                  .fontStyle,
-                                                        ),
-                                                  ),
-                                                ].divide(SizedBox(width: 4.0)),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Column(
-                                          mainAxisSize: MainAxisSize.max,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Código de Admisión',
-                                              style: FlutterFlowTheme.of(
-                                                      context)
-                                                  .labelSmall
-                                                  .override(
-                                                    font: GoogleFonts.inter(
-                                                      fontWeight:
-                                                          FontWeight.w500,
-                                                      fontStyle:
-                                                          FlutterFlowTheme.of(
-                                                                  context)
-                                                              .labelSmall
-                                                              .fontStyle,
-                                                    ),
-                                                    color: Color(0xFF9E9E9E),
-                                                    fontSize: 11.0,
-                                                    letterSpacing: 0.0,
-                                                    fontWeight: FontWeight.w500,
-                                                    fontStyle:
-                                                        FlutterFlowTheme.of(
-                                                                context)
-                                                            .labelSmall
-                                                            .fontStyle,
-                                                  ),
-                                            ),
-                                            Padding(
-                                              padding: EdgeInsetsDirectional
-                                                  .fromSTEB(0.0, 4.0, 0.0, 0.0),
-                                              child: Row(
-                                                mainAxisSize: MainAxisSize.max,
-                                                children: [
-                                                  Icon(
-                                                    Icons.tag,
-                                                    color: Color(0xFF4A6CF7),
-                                                    size: 14.0,
-                                                  ),
-                                                  Text(
-                                                    valueOrDefault<String>(
-                                                      getJsonField(
-                                                        listViewListarInformesMedicoResponse
-                                                            .jsonBody,
-                                                        r'''$.CodigoReferto''',
-                                                      )?.toString(),
-                                                      'Cod. Admision',
-                                                    ),
-                                                    style: FlutterFlowTheme.of(
-                                                            context)
-                                                        .bodyMedium
-                                                        .override(
-                                                          font:
-                                                              GoogleFonts.inter(
-                                                            fontWeight:
-                                                                FontWeight.w500,
-                                                            fontStyle:
-                                                                FlutterFlowTheme.of(
-                                                                        context)
-                                                                    .bodyMedium
-                                                                    .fontStyle,
-                                                          ),
-                                                          color:
-                                                              Color(0xFF12151C),
-                                                          fontSize: 13.0,
-                                                          letterSpacing: 0.0,
-                                                          fontWeight:
-                                                              FontWeight.w500,
-                                                          fontStyle:
-                                                              FlutterFlowTheme.of(
-                                                                      context)
-                                                                  .bodyMedium
-                                                                  .fontStyle,
-                                                        ),
-                                                  ),
-                                                ].divide(SizedBox(width: 4.0)),
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                  Padding(
-                                    padding: EdgeInsetsDirectional.fromSTEB(
-                                        0.0, 14.0, 0.0, 0.0),
-                                    child: FFButtonWidget(
-                                      onPressed: () async {
-                                        await launchURL(
-                                            'https://api.laboratoriotequis.com.mx/medico/descargar/${getJsonField(
-                                          listViewListarInformesMedicoResponse
-                                              .jsonBody,
-                                          r'''$.IdReferto''',
-                                        ).toString()}?CPA_Medico=${FFAppState().usuarioCPA}');
-                                      },
-                                      text: 'Ver PDF',
-                                      icon: Icon(
-                                        Icons.picture_as_pdf,
-                                        size: 16.0,
-                                      ),
-                                      options: FFButtonOptions(
-                                        width: double.infinity,
-                                        height: 42.0,
-                                        padding: EdgeInsetsDirectional.fromSTEB(
-                                            16.0, 0.0, 16.0, 0.0),
-                                        iconPadding:
-                                            EdgeInsetsDirectional.fromSTEB(
-                                                0.0, 0.0, 0.0, 0.0),
-                                        color: Color(0xFF4A6CF7),
-                                        textStyle: FlutterFlowTheme.of(context)
-                                            .titleSmall
-                                            .override(
-                                              font: GoogleFonts.inter(
-                                                fontWeight: FontWeight.w600,
-                                                fontStyle:
-                                                    FlutterFlowTheme.of(context)
-                                                        .titleSmall
-                                                        .fontStyle,
-                                              ),
-                                              color: Colors.white,
-                                              fontSize: 13.0,
-                                              letterSpacing: 0.0,
-                                              fontWeight: FontWeight.w600,
-                                              fontStyle:
-                                                  FlutterFlowTheme.of(context)
-                                                      .titleSmall
-                                                      .fontStyle,
-                                            ),
-                                        elevation: 0.0,
-                                        borderSide: BorderSide(
-                                          color: Colors.transparent,
-                                          width: 1.0,
-                                        ),
-                                        borderRadius:
-                                            BorderRadius.circular(10.0),
-                                      ),
-                                    ),
-                                  ),
-                                ],
+                            child: Align(
+                              alignment: AlignmentDirectional(0, 0),
+                              child: Icon(
+                                Icons.person_outline,
+                                color: Color(0xFF4A6CF7),
+                                size: 20,
                               ),
                             ),
                           ),
+                          SizedBox(width: 8),
+                          Column(
+                            mainAxisSize: MainAxisSize.max,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Paciente',
+                                style: FlutterFlowTheme.of(context)
+                                    .labelSmall
+                                    .override(
+                                      font: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w500),
+                                      color: Color(0xFF9E9E9E),
+                                      fontSize: 11,
+                                      letterSpacing: 0.0,
+                                    ),
+                              ),
+                              Text(
+                                valueOrDefault<String>(
+                                  getJsonField(item, r'$.NombrePaciente')
+                                      ?.toString(),
+                                  'Sin nombre',
+                                ),
+                                style: FlutterFlowTheme.of(context)
+                                    .bodyMedium
+                                    .override(
+                                      font: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600),
+                                      color: Color(0xFF12151C),
+                                      fontSize: 15,
+                                      letterSpacing: 0.0,
+                                    ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      width: 80,
+                      height: 26,
+                      decoration: BoxDecoration(
+                        color: Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(13),
+                      ),
+                      child: Align(
+                        alignment: AlignmentDirectional(0, 0),
+                        child: Text(
+                          'Disponible',
+                          style: FlutterFlowTheme.of(context)
+                              .labelSmall
+                              .override(
+                                font: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w600),
+                                color: Color(0xFF388E3C),
+                                fontSize: 11,
+                                letterSpacing: 0.0,
+                              ),
                         ),
-                      ],
-                    );
-                  },
+                      ),
+                    ),
+                    Divider(
+                      height: 1,
+                      thickness: 1,
+                      color: Color(0xFFF0F0F0),
+                    ),
+                    Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(0, 10, 0, 0),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.max,
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Fecha de Reporte',
+                                style: FlutterFlowTheme.of(context)
+                                    .labelSmall
+                                    .override(
+                                      font: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w500),
+                                      color: Color(0xFF9E9E9E),
+                                      fontSize: 11,
+                                      letterSpacing: 0.0,
+                                    ),
+                              ),
+                              Row(
+                                children: [
+                                  Icon(Icons.calendar_today_outlined,
+                                      color: Color(0xFF4A6CF7), size: 14),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    valueOrDefault<String>(
+                                      getJsonField(item, r'$.FechaReferto')
+                                          ?.toString(),
+                                      '--',
+                                    ),
+                                    style: FlutterFlowTheme.of(context)
+                                        .bodyMedium
+                                        .override(
+                                          font: GoogleFonts.inter(
+                                              fontWeight: FontWeight.w500),
+                                          color: Color(0xFF12151C),
+                                          fontSize: 13,
+                                          letterSpacing: 0.0,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Código',
+                                style: FlutterFlowTheme.of(context)
+                                    .labelSmall
+                                    .override(
+                                      font: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w500),
+                                      color: Color(0xFF9E9E9E),
+                                      fontSize: 11,
+                                      letterSpacing: 0.0,
+                                    ),
+                              ),
+                              Row(
+                                children: [
+                                  Icon(Icons.tag,
+                                      color: Color(0xFF4A6CF7), size: 14),
+                                  SizedBox(width: 4),
+                                  Text(
+                                    valueOrDefault<String>(
+                                      getJsonField(item, r'$.CodigoReferto')
+                                          ?.toString(),
+                                      '--',
+                                    ),
+                                    style: FlutterFlowTheme.of(context)
+                                        .bodyMedium
+                                        .override(
+                                          font: GoogleFonts.inter(
+                                              fontWeight: FontWeight.w500),
+                                          color: Color(0xFF12151C),
+                                          fontSize: 13,
+                                          letterSpacing: 0.0,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: EdgeInsetsDirectional.fromSTEB(0, 14, 0, 0),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: FFButtonWidget(
+                              onPressed: () async {
+                                final id = getJsonField(item, r'$.IdReferto').toString();
+                                final url = 'https://api.laboratoriotequis.com.mx/medico/descargar/$id?CPA_Medico=${FFAppState().usuarioCPA}';
+                                await abrirPDF(context, url: url, nombreArchivo: 'informe_$id');
+                              },
+                              text: 'Ver PDF',
+                              icon: Icon(Icons.picture_as_pdf, size: 16),
+                              options: FFButtonOptions(
+                                height: 42,
+                                padding: EdgeInsetsDirectional.fromSTEB(12, 0, 12, 0),
+                                color: Color(0xFF4A6CF7),
+                                textStyle: FlutterFlowTheme.of(context).titleSmall.override(
+                                      font: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                                      color: Colors.white,
+                                      fontSize: 13,
+                                      letterSpacing: 0,
+                                    ),
+                                elevation: 0,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                          ),
+                          SizedBox(width: 8),
+                          Material(
+                            color: Color(0xFFE8F0FE),
+                            borderRadius: BorderRadius.circular(10),
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap: () async {
+                                final id = getJsonField(item, r'$.IdReferto').toString();
+                                final url = 'https://api.laboratoriotequis.com.mx/medico/descargar/$id?CPA_Medico=${FFAppState().usuarioCPA}';
+                                await abrirPDF(context, url: url, nombreArchivo: 'informe_$id', compartir: true);
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.all(10),
+                                child: Icon(Icons.share_rounded, color: Color(0xFF4A6CF7), size: 20),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+    },
+  ),
                 ),
               ),
             ],

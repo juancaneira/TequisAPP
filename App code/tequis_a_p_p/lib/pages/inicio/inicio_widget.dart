@@ -6,6 +6,7 @@ import '/index.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'inicio_model.dart';
 export 'inicio_model.dart';
 
@@ -30,6 +31,23 @@ class _InicioWidgetState extends State<InicioWidget> {
   void initState() {
     super.initState();
     _model = createModel(context, () => InicioModel());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final cpa = prefs.getString('session_cpa');
+      final nombre = prefs.getString('session_nombre');
+      final rol = prefs.getString('session_rol');
+      if (cpa != null && nombre != null && rol != null && mounted) {
+        FFAppState().usuarioCPA = cpa;
+        FFAppState().usuarioNombre = nombre;
+        FFAppState().usuarioRol = rol;
+        FFAppState().estaLogueado = true;
+        if (rol == 'medico') {
+          context.goNamed(ResultadosMedicosWidget.routeName);
+        } else {
+          context.goNamed(ResultadosPacienteWidget.routeName);
+        }
+      }
+    });
   }
 
   @override
@@ -224,8 +242,8 @@ class _InicioWidgetState extends State<InicioWidget> {
                               padding: EdgeInsetsDirectional.fromSTEB(
                                   0.0, 16.0, 0.0, 0.0),
                               child: FFButtonWidget(
-                                onPressed: () {
-                                  print('Button pressed ...');
+                                onPressed: () async {
+                                  context.pushNamed(LoginpacienteWidget.routeName);
                                 },
                                 text: 'Soy Paciente',
                                 icon: Icon(

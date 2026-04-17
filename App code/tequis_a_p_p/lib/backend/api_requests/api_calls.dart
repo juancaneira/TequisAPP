@@ -138,7 +138,7 @@ class ListarInformesPacienteCall {
 
   List<String>? idReferto(dynamic response) => (getJsonField(
         response,
-        r'''$.informes[:].IdReferto''',
+        r'''$[:].IdReferto''',
         true,
       ) as List?)
           ?.withoutNulls
@@ -147,7 +147,7 @@ class ListarInformesPacienteCall {
           .toList();
   List<String>? codigoReferto(dynamic response) => (getJsonField(
         response,
-        r'''$.informes[:].CodigoReferto''',
+        r'''$[:].CodigoReferto''',
         true,
       ) as List?)
           ?.withoutNulls
@@ -156,30 +156,25 @@ class ListarInformesPacienteCall {
           .toList();
   List<String>? fechaReferto(dynamic response) => (getJsonField(
         response,
-        r'''$.informes[:].FechaReferto''',
+        r'''$[:].FechaReferto''',
         true,
       ) as List?)
           ?.withoutNulls
           .map((x) => castToType<String>(x))
           .withoutNulls
           .toList();
-  List? nombreMedico(dynamic response) => getJsonField(
+  List<String>? nombreMedico(dynamic response) => (getJsonField(
         response,
-        r'''$.informes[:].NombreMedico''',
-        true,
-      ) as List?;
-  List<int>? tamanoPDFkb(dynamic response) => (getJsonField(
-        response,
-        r'''$.informes[:].TamanoPDFkb''',
+        r'''$[:].NombreMedico''',
         true,
       ) as List?)
           ?.withoutNulls
-          .map((x) => castToType<int>(x))
+          .map((x) => castToType<String>(x))
           .withoutNulls
           .toList();
-  List<int>? pacienteYaConsulto(dynamic response) => (getJsonField(
+  List<int>? tamanoPDFkb(dynamic response) => (getJsonField(
         response,
-        r'''$.informes[:].PacienteYaConsulto''',
+        r'''$[:].TamanoPDFkb''',
         true,
       ) as List?)
           ?.withoutNulls
@@ -192,19 +187,24 @@ class ConfigurarContrasenaCall {
   Future<ApiCallResponse> call({
     String? usuario = '',
     String? passwordApp = '',
+    String? passwordActual,
   }) async {
     final baseUrl = TequisAPIGroup.getBaseUrl();
 
-    final ffApiRequestBody = '''
-{
-  "usuario": "[usuario]",
-  "passwordApp": "[passwordApp]"
-}''';
+    final Map<String, dynamic> bodyMap = {
+      'usuario': usuario,
+      'passwordApp': passwordApp,
+    };
+    if (passwordActual != null && passwordActual.isNotEmpty) {
+      bodyMap['passwordActual'] = passwordActual;
+    }
+    final ffApiRequestBody = jsonEncode(bodyMap);
+
     return ApiManager.instance.makeApiCall(
       callName: 'ConfigurarContrasena',
       apiUrl: '${baseUrl}/setup-password',
       callType: ApiCallType.POST,
-      headers: {},
+      headers: {'Content-Type': 'application/json'},
       params: {},
       body: ffApiRequestBody,
       bodyType: BodyType.JSON,
@@ -236,8 +236,8 @@ class LoginCall {
 
     final ffApiRequestBody = '''
 {
-  "usuario": "usuario",
-  "contrasena": "contrasena"
+  "usuario": "${usuario}",
+  "contrasena": "${contrasena}"
 }''';
     return ApiManager.instance.makeApiCall(
       callName: 'login',
@@ -262,26 +262,26 @@ class LoginCall {
         response,
         r'''$.error''',
       ));
-  dynamic ok(dynamic response) => getJsonField(
+  bool? ok(dynamic response) => castToType<bool>(getJsonField(
         response,
         r'''$.ok''',
-      );
-  dynamic rol(dynamic response) => getJsonField(
+      ));
+  String? rol(dynamic response) => castToType<String>(getJsonField(
         response,
         r'''$.rol''',
-      );
-  dynamic cpa(dynamic response) => getJsonField(
+      ));
+  String? cpa(dynamic response) => castToType<String>(getJsonField(
         response,
         r'''$.cpa''',
-      );
-  dynamic nombre(dynamic response) => getJsonField(
+      ));
+  String? nombre(dynamic response) => castToType<String>(getJsonField(
         response,
         r'''$.nombre''',
-      );
-  dynamic email(dynamic response) => getJsonField(
+      ));
+  String? email(dynamic response) => castToType<String>(getJsonField(
         response,
         r'''$.email''',
-      );
+      ));
 }
 
 /// End TequisAPI Group Code

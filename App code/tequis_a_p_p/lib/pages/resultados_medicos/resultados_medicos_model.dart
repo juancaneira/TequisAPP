@@ -10,9 +10,19 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 class ResultadosMedicosModel extends FlutterFlowModel<ResultadosMedicosWidget> {
-  @override
-  void initState(BuildContext context) {}
+  TextEditingController? busquedaController;
+  FocusNode? busquedaFocus;
+  String filtroBusqueda = '';
 
   @override
-  void dispose() {}
+  void initState(BuildContext context) {
+    busquedaController = TextEditingController();
+    busquedaFocus = FocusNode();
+  }
+
+  @override
+  void dispose() {
+    busquedaController?.dispose();
+    busquedaFocus?.dispose();
+  }
 }
